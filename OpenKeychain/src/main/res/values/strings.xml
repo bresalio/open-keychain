@@ -47,6 +47,7 @@
     <string name="section_should_you_trust">"Should you trust this key?"</string>
     <string name="section_proof_details">Proof verification</string>
     <string name="section_keys">"Subkeys"</string>
+    <string name="section_photo_atts">"Photo Attributes"</string>
     <string name="section_cloud_search">"Key Search"</string>
     <string name="section_cloud_search_summary">"Keyserver, keybase.io"</string>
     <string name="section_passphrase_cache">"Passwords and PINs"</string>
@@ -319,6 +320,8 @@
     <string name="public_key_deletetion_confirmation">"Delete key '%s'?"</string>
     <string name="also_export_secret_keys">"Also export secret keys"</string>
     <string name="reinstall_openkeychain">"You encountered a known bug with Android. Please reinstall OpenKeychain if you want to link your contacts with keys."</string>
+    <string name="no_photos">"No photo attributes are attached to this key."</string>
+    <string name="photo_att_description">"Photo attribute"</string>
 
     <string name="key_exported">"Successfully exported 1 key."</string>
     <string name="keys_exported">"Successfully exported %d keys."</string>
@@ -671,6 +674,7 @@
     <string name="key_view_tab_share">"Share"</string>
     <string name="key_view_tab_keys">"Subkeys"</string>
     <string name="key_view_tab_certs">"Certificates"</string>
+    <string name="key_view_tab_photos">"Photos"</string>
     <string name="key_view_tab_keybase">"Keybase.io"</string>
     <string name="user_id_info_revoked_title">"Revoked"</string>
     <string name="user_id_info_revoked_text">"This identity has been revoked by the key owner. It is no longer valid."</string>

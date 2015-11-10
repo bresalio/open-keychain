@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2012-2014 Dominik Schürmann <dominik@dominikschuermann.de>
  * Copyright (C) 2014 Vincent Breitmoser <v.breitmoser@mugenguild.com>
+ * Extended by Bresalio Nagy <bresalio@yahoo.com> in 2015
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -114,6 +115,7 @@ public class KeychainContract {
     public static final String PATH_SECRET = "secret";
     public static final String PATH_USER_IDS = "user_ids";
     public static final String PATH_LINKED_IDS = "linked_ids";
+    public static final String PATH_PHOTO_ATTRIBUTES = "photo_attributes";
     public static final String PATH_KEYS = "keys";
     public static final String PATH_CERTS = "certs";
 
@@ -283,6 +285,10 @@ public class KeychainContract {
 
         public static Uri buildLinkedIdsUri(Uri uri) {
             return CONTENT_URI.buildUpon().appendPath(uri.getPathSegments().get(1)).appendPath(PATH_LINKED_IDS).build();
+        }
+
+        public static Uri buildPhotoAttributesUri(Uri uri) {
+            return CONTENT_URI.buildUpon().appendPath(uri.getPathSegments().get(1)).appendPath(PATH_PHOTO_ATTRIBUTES).build();
         }
 
     }

@@ -4,6 +4,7 @@
 =======
 >>>>>>> development
  * Copyright (C) 2014 Vincent Breitmoser <v.breitmoser@mugenguild.com>
+ * Extended by Bresalio Nagy <bresalio@yahoo.com> in 2015
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +29,7 @@ import org.spongycastle.bcpg.UserAttributePacket;
 import org.spongycastle.bcpg.UserAttributeSubpacket;
 import org.spongycastle.bcpg.UserAttributeSubpacketInputStream;
 import org.spongycastle.bcpg.UserAttributeSubpacketTags;
+import org.spongycastle.bcpg.attr.ImageAttribute;
 import org.spongycastle.openpgp.PGPUserAttributeSubpacketVector;
 
 import java.io.ByteArrayInputStream;
@@ -36,6 +38,7 @@ import java.io.IOException;
 import java.io.ObjectStreamException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.List;
 
 public class WrappedUserAttribute implements Serializable {
 
@@ -46,6 +49,7 @@ public class WrappedUserAttribute implements Serializable {
     private PGPUserAttributeSubpacketVector mVector;
 
     WrappedUserAttribute(PGPUserAttributeSubpacketVector vector) {
+
         mVector = vector;
     }
 
@@ -61,16 +65,16 @@ public class WrappedUserAttribute implements Serializable {
         return 0;
     }
 
-    public static WrappedUserAttribute fromSubpacket (int type, byte[] data) {
+    public static WrappedUserAttribute fromSubpacket(int type, byte[] data) {
         UserAttributeSubpacket subpacket = new UserAttributeSubpacket(type, data);
         PGPUserAttributeSubpacketVector vector = new PGPUserAttributeSubpacketVector(
-                new UserAttributeSubpacket[] { subpacket });
+                new UserAttributeSubpacket[]{subpacket});
 
         return new WrappedUserAttribute(vector);
 
     }
 
-    public byte[] getEncoded () throws IOException {
+    public byte[] getEncoded() throws IOException {
         UserAttributeSubpacket[] subpackets = mVector.toSubpacketArray();
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         for (UserAttributeSubpacket subpacket : subpackets) {
@@ -79,7 +83,7 @@ public class WrappedUserAttribute implements Serializable {
         return out.toByteArray();
     }
 
-    public static WrappedUserAttribute fromData (byte[] data) throws IOException {
+    public static WrappedUserAttribute fromData(byte[] data) throws IOException {
         UserAttributeSubpacketInputStream in =
                 new UserAttributeSubpacketInputStream(new ByteArrayInputStream(data));
         ArrayList<UserAttributeSubpacket> list = new ArrayList<>();
@@ -92,7 +96,9 @@ public class WrappedUserAttribute implements Serializable {
                 new PGPUserAttributeSubpacketVector(result));
     }
 
-    /** Writes this object to an ObjectOutputStream. */
+    /**
+     * Writes this object to an ObjectOutputStream.
+     */
     private void writeObject(java.io.ObjectOutputStream out) throws IOException {
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -107,7 +113,7 @@ public class WrappedUserAttribute implements Serializable {
         byte[] data = (byte[]) in.readObject();
         BCPGInputStream bcpg = new BCPGInputStream(new ByteArrayInputStream(data));
         Packet p = bcpg.readPacket();
-        if ( ! UserAttributePacket.class.isInstance(p)) {
+        if (!UserAttributePacket.class.isInstance(p)) {
             throw new IOException("Could not decode UserAttributePacket!");
         }
         mVector = new PGPUserAttributeSubpacketVector(((UserAttributePacket) p).getSubpackets());
@@ -121,6 +127,23 @@ public class WrappedUserAttribute implements Serializable {
             ret[i] = subpackets[i].getData();
         }
         return ret;
+    }
+
+    /**
+     * Added by Bresalio Nagy in 2015
+     * @return the list of the byte arrays that hold the image datas of the image subpackets
+     * in the subpacket array wrapped by this attribute.
+     */
+    public List<byte[]> getImageAttributeData() {
+        List<byte[]> imageAttributeData = new ArrayList<>();
+
+        for (UserAttributeSubpacket subpacket : mVector.toSubpacketArray()) {
+            if (subpacket.getType() == UserAttributeSubpacketTags.IMAGE_ATTRIBUTE) {
+                imageAttributeData.add(((ImageAttribute) subpacket).getImageData());
+            }
+        }
+
+        return imageAttributeData;
     }
 
     private void readObjectNoData() throws ObjectStreamException {

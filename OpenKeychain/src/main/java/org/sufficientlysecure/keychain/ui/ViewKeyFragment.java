@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2014 Dominik Schürmann <dominik@dominikschuermann.de>
  * Copyright (C) 2014 Vincent Breitmoser <v.breitmoser@mugenguild.com>
+ * Extended by Bresalio Nagy <bresalio@yahoo.com> in 2015
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,7 +45,6 @@ import android.transition.TransitionInflater;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
 import android.view.ViewTreeObserver.OnPreDrawListener;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
@@ -58,6 +58,7 @@ import org.sufficientlysecure.keychain.R;
 import org.sufficientlysecure.keychain.compatibility.DialogFragmentWorkaround;
 import org.sufficientlysecure.keychain.provider.KeychainContract;
 import org.sufficientlysecure.keychain.ui.adapter.LinkedIdsAdapter;
+import org.sufficientlysecure.keychain.ui.adapter.PhotoAttributesAdapter;
 import org.sufficientlysecure.keychain.ui.adapter.UserIdsAdapter;
 import org.sufficientlysecure.keychain.ui.dialog.UserIdInfoDialogFragment;
 import org.sufficientlysecure.keychain.ui.linked.LinkedIdViewFragment;
@@ -76,7 +77,7 @@ public class ViewKeyFragment extends LoaderFragment implements
     //private ListView mLinkedSystemContact;
 
     enum PostponeType {
-        NONE, LINKED;
+        NONE, LINKED
     }
 
     boolean mIsSecret = false;
@@ -85,6 +86,7 @@ public class ViewKeyFragment extends LoaderFragment implements
     private static final int LOADER_ID_USER_IDS = 1;
     private static final int LOADER_ID_LINKED_CONTACT = 2;
     private static final int LOADER_ID_LINKED_IDS = 3;
+    private static final int LOADER_ID_PHOTO_ATTRIBUTES = 4;
 
     private static final String LOADER_EXTRA_LINKED_CONTACT_MASTER_KEY_ID
             = "loader_linked_contact_master_key_id";
@@ -93,6 +95,7 @@ public class ViewKeyFragment extends LoaderFragment implements
 
     private UserIdsAdapter mUserIdsAdapter;
     private LinkedIdsAdapter mLinkedIdsAdapter;
+    private PhotoAttributesAdapter mPhotoAttributesAdapter;
 
     private Uri mDataUri;
     private PostponeType mPostponeType;
@@ -106,6 +109,9 @@ public class ViewKeyFragment extends LoaderFragment implements
     private CardView mLinkedIdsCard;
     private byte[] mFingerprint;
     private TextView mLinkedIdsExpander;
+
+    private ListView mPhotoAttributes;
+    private CardView mPhotoAttributesCard;
 
     /**
      * Creates new instance of this fragment
@@ -133,6 +139,9 @@ public class ViewKeyFragment extends LoaderFragment implements
 
         mLinkedIdsExpander = (TextView) view.findViewById(R.id.view_key_linked_ids_expander);
 
+        mPhotoAttributesCard = (CardView) view.findViewById(R.id.photo_attributes);
+        mPhotoAttributes = (ListView) view.findViewById(R.id.view_key_photo_attributes);
+
         mUserIds.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -143,6 +152,12 @@ public class ViewKeyFragment extends LoaderFragment implements
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 showLinkedId(position);
+            }
+        });
+        mPhotoAttributes.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                showPhotoAttribute(position);
             }
         });
 
@@ -209,6 +224,10 @@ public class ViewKeyFragment extends LoaderFragment implements
                 }
             });
         }
+    }
+
+    private void showPhotoAttribute(final int position) {
+        mPhotoAttributesAdapter.startViewIntent(position);
     }
 
     /**
@@ -356,6 +375,10 @@ public class ViewKeyFragment extends LoaderFragment implements
                 return LinkedIdsAdapter.createLoader(getActivity(), mDataUri);
             }
 
+            case LOADER_ID_PHOTO_ATTRIBUTES: {
+                return PhotoAttributesAdapter.createLoader(getActivity(), mDataUri);
+            }
+
             //we need a separate loader for linked contact to ensure refreshing on verification
             case LOADER_ID_LINKED_CONTACT: {
                 //passed in args to explicitly specify their need
@@ -395,6 +418,9 @@ public class ViewKeyFragment extends LoaderFragment implements
          */
         // Avoid NullPointerExceptions...
         if (data == null || data.getCount() == 0) {
+            if(loader.getId() == LOADER_ID_PHOTO_ATTRIBUTES) {
+                mPhotoAttributesCard.setVisibility(View.GONE);
+            }
             return;
         }
         // Swap the new cursor in. (The framework will take care of closing the
@@ -419,6 +445,9 @@ public class ViewKeyFragment extends LoaderFragment implements
                         getLoaderManager().initLoader(LOADER_ID_LINKED_IDS, null, this);
                     }
 
+                    mPhotoAttributesAdapter = new PhotoAttributesAdapter(getActivity(), null, 0, !mIsSecret, false);
+                    mPhotoAttributes.setAdapter(mPhotoAttributesAdapter);
+                    getLoaderManager().initLoader(LOADER_ID_PHOTO_ATTRIBUTES, null, this);
 
                     Bundle linkedContactData = new Bundle();
                     linkedContactData.putLong(LOADER_EXTRA_LINKED_CONTACT_MASTER_KEY_ID, masterKeyId);
@@ -434,6 +463,12 @@ public class ViewKeyFragment extends LoaderFragment implements
             case LOADER_ID_USER_IDS: {
                 setContentShown(true, false);
                 mUserIdsAdapter.swapCursor(data);
+                break;
+            }
+
+            case LOADER_ID_PHOTO_ATTRIBUTES: {
+                setContentShown(true, false);
+                mPhotoAttributesAdapter.swapCursor(data);
                 break;
             }
 
@@ -479,6 +514,10 @@ public class ViewKeyFragment extends LoaderFragment implements
             case LOADER_ID_LINKED_IDS: {
                 mLinkedIdsCard.setVisibility(View.GONE);
                 mLinkedIdsAdapter.swapCursor(null);
+                break;
+            }
+            case LOADER_ID_PHOTO_ATTRIBUTES: {
+                mPhotoAttributesAdapter.swapCursor(null);
                 break;
             }
         }
