@@ -724,6 +724,7 @@
     <!-- Edit key -->
     <string name="edit_key_action_change_passphrase">"Change Password"</string>
     <string name="edit_key_action_add_identity">"Add Identity"</string>
+    <string name="edit_key_action_add_photo">"Add Photo Attribute"</string>
     <string name="edit_key_action_add_subkey">"Add Subkey"</string>
     <string name="edit_key_edit_user_id_title">"Select an action!"</string>
     <string-array name="edit_key_edit_user_id">
@@ -744,6 +745,7 @@
     <string name="edit_key_new_subkey">"new subkey"</string>
     <string name="edit_key_select_flag">"Please select at least one flag!"</string>
     <string name="edit_key_error_add_identity">"Add at least one identity!"</string>
+    <string name="edit_key_error_add_photo">"Add at least one photo!"</string>
     <string name="edit_key_error_add_subkey">"Add at least one subkey!"</string>
     <string name="edit_key_error_bad_nfc_algo">"Algorithm not supported by smart card!"</string>
     <string name="edit_key_error_bad_nfc_size">"Key size not supported by smart card!"</string>

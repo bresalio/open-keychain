@@ -21,6 +21,7 @@ package org.sufficientlysecure.keychain.service;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import org.sufficientlysecure.keychain.linked.PhotoAttribute;
 import org.sufficientlysecure.keychain.pgp.WrappedUserAttribute;
 import org.sufficientlysecure.keychain.util.Passphrase;
 
@@ -52,14 +53,26 @@ public class SaveKeyringParcel implements Parcelable {
     public ChangeUnlockParcel mNewUnlock;
 
     public ArrayList<String> mAddUserIds;
-    public ArrayList<WrappedUserAttribute> mAddUserAttribute;
+    public ArrayList<WrappedUserAttribute> mAddUserAttributes;
     public ArrayList<SubkeyAdd> mAddSubKeys;
+
+    // The added photos are stored as photo attributes here.
+    // Storing them as PhotoAttribute objects is inevitable
+    // for display reasons: the view holder of the add-list
+    // is designed to receive and display photo attribute objects.
+    // But when the modify/save method processes this save parcel
+    // in PgpKeyOperation (see modifySecretKeyRing() and createSecretKeyRing()),
+    // they have to be converted to WrappedUserAttributes and added to that list.
+    public ArrayList<PhotoAttribute> mAddPhotos;
 
     public ArrayList<SubkeyChange> mChangeSubKeys;
     public String mChangePrimaryUserId;
 
     public ArrayList<String> mRevokeUserIds;
+    public ArrayList<WrappedUserAttribute> mRevokeUserAttributes;
     public ArrayList<Long> mRevokeSubKeys;
+
+    public ArrayList<PhotoAttribute> mRevokePhotos;
 
     // if these are non-null, PINs will be changed on the card
     public Passphrase mCardPin;
@@ -83,12 +96,15 @@ public class SaveKeyringParcel implements Parcelable {
     public void reset() {
         mNewUnlock = null;
         mAddUserIds = new ArrayList<>();
-        mAddUserAttribute = new ArrayList<>();
+        mAddUserAttributes = new ArrayList<>();
         mAddSubKeys = new ArrayList<>();
+        mAddPhotos = new ArrayList<>();
         mChangePrimaryUserId = null;
         mChangeSubKeys = new ArrayList<>();
         mRevokeUserIds = new ArrayList<>();
+        mRevokeUserAttributes = new ArrayList<>();
         mRevokeSubKeys = new ArrayList<>();
+        mRevokePhotos = new ArrayList<>();
         mCardPin = null;
         mCardAdminPin = null;
         mUpload = false;
@@ -120,9 +136,11 @@ public class SaveKeyringParcel implements Parcelable {
 
     /** Returns true iff this parcel does not contain any operations which require a passphrase. */
     public boolean isRestrictedOnly() {
-        if (mNewUnlock != null || !mAddUserIds.isEmpty() || !mAddUserAttribute.isEmpty()
-                || !mAddSubKeys.isEmpty() || mChangePrimaryUserId != null || !mRevokeUserIds.isEmpty()
-                || !mRevokeSubKeys.isEmpty()) {
+        if (mNewUnlock != null || mChangePrimaryUserId != null
+                || !mAddUserIds.isEmpty() || !mAddUserAttributes.isEmpty()
+                || !mAddSubKeys.isEmpty() || !mAddPhotos.isEmpty()
+                || !mRevokeUserIds.isEmpty() || !mRevokeUserAttributes.isEmpty()
+                || !mRevokeSubKeys.isEmpty() || !mRevokePhotos.isEmpty()) {
             return false;
         }
 
@@ -242,6 +260,15 @@ public class SaveKeyringParcel implements Parcelable {
         }
     }
 
+    public void convertPhotosToWrappedUserAttributes() {
+        for (PhotoAttribute photo : mAddPhotos) {
+            mAddUserAttributes.add(photo.toWrappedUserAttribute());
+        }
+        for (PhotoAttribute photo : mRevokePhotos) {
+            mRevokeUserAttributes.add(photo.toWrappedUserAttribute());
+        }
+    }
+
     @SuppressWarnings("unchecked") // we verify the reads against writes in writeToParcel
     public SaveKeyringParcel(Parcel source) {
         mMasterKeyId = source.readInt() != 0 ? source.readLong() : null;
@@ -250,14 +277,17 @@ public class SaveKeyringParcel implements Parcelable {
         mNewUnlock = source.readParcelable(getClass().getClassLoader());
 
         mAddUserIds = source.createStringArrayList();
-        mAddUserAttribute = (ArrayList<WrappedUserAttribute>) source.readSerializable();
+        mAddUserAttributes = (ArrayList<WrappedUserAttribute>) source.readSerializable();
         mAddSubKeys = (ArrayList<SubkeyAdd>) source.readSerializable();
+        mAddPhotos = (ArrayList<PhotoAttribute>) source.readSerializable();
 
         mChangeSubKeys = (ArrayList<SubkeyChange>) source.readSerializable();
         mChangePrimaryUserId = source.readString();
 
         mRevokeUserIds = source.createStringArrayList();
+        mRevokeUserAttributes = (ArrayList<WrappedUserAttribute>) source.readSerializable();
         mRevokeSubKeys = (ArrayList<Long>) source.readSerializable();
+        mRevokePhotos = (ArrayList<PhotoAttribute>) source.readSerializable();
 
         mCardPin = source.readParcelable(Passphrase.class.getClassLoader());
         mCardAdminPin  = source.readParcelable(Passphrase.class.getClassLoader());
@@ -279,14 +309,17 @@ public class SaveKeyringParcel implements Parcelable {
         destination.writeParcelable(mNewUnlock, flags);
 
         destination.writeStringList(mAddUserIds);
-        destination.writeSerializable(mAddUserAttribute);
+        destination.writeSerializable(mAddUserAttributes);
         destination.writeSerializable(mAddSubKeys);
+        destination.writeSerializable(mAddPhotos);
 
         destination.writeSerializable(mChangeSubKeys);
         destination.writeString(mChangePrimaryUserId);
 
         destination.writeStringList(mRevokeUserIds);
+        destination.writeSerializable(mRevokeUserAttributes);
         destination.writeSerializable(mRevokeSubKeys);
+        destination.writeSerializable(mRevokePhotos);
 
         destination.writeParcelable(mCardPin, flags);
         destination.writeParcelable(mCardAdminPin, flags);
@@ -316,12 +349,15 @@ public class SaveKeyringParcel implements Parcelable {
         String out = "mMasterKeyId: " + mMasterKeyId + "\n";
         out += "mNewUnlock: " + mNewUnlock + "\n";
         out += "mAddUserIds: " + mAddUserIds + "\n";
-        out += "mAddUserAttribute: " + mAddUserAttribute + "\n";
+        out += "mAddUserAttributes: " + mAddUserAttributes + "\n";
         out += "mAddSubKeys: " + mAddSubKeys + "\n";
+        out += "mAddPhotos: " + mAddPhotos + "\n";
         out += "mChangeSubKeys: " + mChangeSubKeys + "\n";
         out += "mChangePrimaryUserId: " + mChangePrimaryUserId + "\n";
         out += "mRevokeUserIds: " + mRevokeUserIds + "\n";
+        out += "mRevokeUserAttributes: " + mRevokeUserAttributes + "\n";
         out += "mRevokeSubKeys: " + mRevokeSubKeys + "\n";
+        out += "mRevokePhotos: " + mRevokePhotos + "\n";
         out += "mCardPin: " + mCardPin + "\n";
         out += "mCardAdminPin: " + mCardAdminPin;
 

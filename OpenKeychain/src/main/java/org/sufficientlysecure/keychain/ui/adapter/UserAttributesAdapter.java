@@ -27,12 +27,20 @@ public abstract class UserAttributesAdapter extends CursorAdapter {
     public static final int INDEX_IS_PRIMARY = 6;
     public static final int INDEX_IS_REVOKED = 7;
 
+    // c: The cursor from which to get the data.
+    // flags: Flags used to determine the behavior of the adapter; may be any
+    // combination of FLAG_AUTO_REQUERY and FLAG_REGISTER_CONTENT_OBSERVER.
     public UserAttributesAdapter(Context context, Cursor c, int flags) {
         super(context, c, flags);
     }
 
+    // Bind an existing view to the data pointed to by cursor.
     @Override
     public abstract void bindView(View view, Context context, Cursor cursor);
+
+    // getString(int): Returns the value of the requested column as a String.
+    // getInt(int): Returns the value of the requested column as an int.
+    // Miért csak erre a 3-ra van getter a fentiek közül?
 
     public String getUserId(int position) {
         mCursor.moveToPosition(position);

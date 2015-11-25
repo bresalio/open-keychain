@@ -25,13 +25,16 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.net.Uri;
+import android.provider.ContactsContract;
 import android.provider.MediaStore;
 
 import org.sufficientlysecure.keychain.Constants;
 import org.sufficientlysecure.keychain.pgp.WrappedUserAttribute;
 import org.sufficientlysecure.keychain.util.Log;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
 
@@ -39,6 +42,13 @@ import java.util.List;
  * The instances of this class represent photo attributes.
  */
 public class PhotoAttribute {
+
+    private final Bitmap mBitmap;
+    private final byte[] mByteData;
+    // The ENCODED byte data of the bitmap
+    private int mStatus;
+    // verification status, see below
+    private final Context mContext;
 
     // possible verification statuses
     public static final int STATUS_REVOKED = 0;
@@ -49,21 +59,29 @@ public class PhotoAttribute {
     // With how many percent to darken the thumbnails of revoked (or invalid) photo atts
     private static final int DARKEN_PERCENT = 70;
 
-    private final Bitmap mBitmap;
-    private final int mSize;
-    // The size of the OpenPGP subpacket the attribute was produced from;
-    // it is NOT equivalent to the byte count of the decoded bitmap!
-    private int mStatus;
-    // verification status, see above
-    private final Context mContext;
-
     private static final Uri EXTERNAL_CONTENT_URI = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
 
-    protected PhotoAttribute(Bitmap bitmap, int size, int status, Context context) {
-        mBitmap = bitmap;
-        mSize = size;
+    protected PhotoAttribute(byte[] byteData, int status, Context context) {
+        mBitmap = BitmapFactory.decodeByteArray(byteData, 0, byteData.length);
+        mByteData = byteData;
         mStatus = status;
         mContext = context;
+    }
+
+    public PhotoAttribute(InputStream inputStream, int status, Context context) throws IOException {
+        this(inputStreamToByteArray(inputStream), status, context);
+    }
+
+    // http://www.gregbugaj.com/?p=283
+    private static byte[] inputStreamToByteArray(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        byte[] buffer = new byte[1024];
+        int bytesRead;
+        while ((bytesRead = inputStream.read(buffer, 0, buffer.length)) != -1) {
+            outputStream.write(buffer, 0, bytesRead);
+        }
+        outputStream.flush();
+        return outputStream.toByteArray();
     }
 
     /**
@@ -79,14 +97,16 @@ public class PhotoAttribute {
         if (imageAttributeData != null && imageAttributeData.size() > 0) {
             PhotoAttribute[] results = new PhotoAttribute[imageAttributeData.size()];
             for (int i = 0; i < imageAttributeData.size(); i++) {
-                byte[] oneImageData = imageAttributeData.get(i);
-                Bitmap bitmap = BitmapFactory.decodeByteArray(oneImageData, 0, oneImageData.length);
-                results[i] = new PhotoAttribute(bitmap, oneImageData.length, status, context);
+                results[i] = new PhotoAttribute(imageAttributeData.get(i), status, context);
             }
             return results;
         }
 
         throw new IOException("No photo attributes found in the attribute data!");
+    }
+
+    public WrappedUserAttribute toWrappedUserAttribute() {
+        return WrappedUserAttribute.fromSubpacket(WrappedUserAttribute.UAT_IMAGE, mByteData);
     }
 
     /**
@@ -141,7 +161,7 @@ public class PhotoAttribute {
      */
     public String getDescription() {
         String widthAndHeight = mBitmap.getWidth() + "x" + mBitmap.getHeight() + " pixels";
-        return "Image of subpacket size " + mSize + ", " + widthAndHeight;
+        return "Image of subpacket size " + mByteData.length + ", " + widthAndHeight;
         // TODO: strings shouldn't be hardcoded, move it to strings.xml!
     }
 
@@ -154,7 +174,7 @@ public class PhotoAttribute {
     }
 
     /**
-     * @return An intent that views the photo is started.
+     * @return an intent that views the photo when started.
      */
     public Intent getViewIntent() {
         Intent intent = new Intent(Intent.ACTION_VIEW);

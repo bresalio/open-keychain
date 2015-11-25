@@ -78,6 +78,49 @@
         <TextView
             style="@style/SectionHeader"
             android:layout_width="wrap_content"
+            android:layout_height="0dp"
+            android:layout_marginTop="8dp"
+            android:text="@string/section_photo_atts"
+            android:layout_weight="1" />
+
+        <org.sufficientlysecure.keychain.ui.widget.FixedListView
+            android:id="@+id/edit_key_photo_atts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dip"
+            android:background="?android:attr/listDivider" />
+
+        <org.sufficientlysecure.keychain.ui.widget.FixedListView
+            android:id="@+id/edit_key_photo_atts_added"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dip"
+            android:background="?android:attr/listDivider" />
+
+        <TextView
+            android:id="@+id/edit_key_action_add_photo"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="@string/edit_key_action_add_photo"
+            android:minHeight="?android:attr/listPreferredItemHeight"
+            android:drawableRight="@drawable/ic_person_add_grey_24dp"
+            android:drawablePadding="8dp"
+            android:gravity="center_vertical"
+            android:clickable="true"
+            style="?android:attr/borderlessButtonStyle" />
+
+        <TextView
+            style="@style/SectionHeader"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="@string/section_keys" />

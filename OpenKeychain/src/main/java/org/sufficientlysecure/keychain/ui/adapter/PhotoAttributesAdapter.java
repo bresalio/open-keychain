@@ -27,14 +27,12 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.TextView;
 
 import org.sufficientlysecure.keychain.Constants;
 import org.sufficientlysecure.keychain.R;
 import org.sufficientlysecure.keychain.linked.PhotoAttribute;
 import org.sufficientlysecure.keychain.provider.KeychainContract;
-import org.sufficientlysecure.keychain.ui.util.KeyFormattingUtils;
+import org.sufficientlysecure.keychain.ui.PhotoAttViewHolder;
 import org.sufficientlysecure.keychain.util.ExtendCursorWrapper;
 
 import java.io.IOException;
@@ -49,6 +47,8 @@ public class PhotoAttributesAdapter extends UserAttributesAdapter {
 
     protected LayoutInflater mInflater;
     protected Context mContext;
+    // Here either the status image is shown or the edit image.
+    // So if this is false, the edit image is shown.
     protected boolean mShowStatusImage;
     protected boolean mShowRevokedItems;
 
@@ -137,7 +137,7 @@ public class PhotoAttributesAdapter extends UserAttributesAdapter {
      * Removes revoked and invalid photo attributes from a photo attribute array.
      */
     private PhotoAttribute[] filterArray(PhotoAttribute[] original) {
-        List<PhotoAttribute> filtered = new ArrayList<PhotoAttribute>();
+        List<PhotoAttribute> filtered = new ArrayList<>();
         for(PhotoAttribute att : original) {
             if(!att.isRevokedOrInvalid()) {
                 filtered.add(att);
@@ -173,7 +173,7 @@ public class PhotoAttributesAdapter extends UserAttributesAdapter {
     @Override
     public View newView(Context context, Cursor cursor, ViewGroup parent) {
         View view = mInflater.inflate(R.layout.photo_attribute_item, null);
-        ViewHolder holder = new ViewHolder(view);
+        PhotoAttViewHolder holder = new PhotoAttViewHolder(view, null, mShowStatusImage, !mShowStatusImage, false);
         view.setTag(holder);
         return view;
     }
@@ -198,9 +198,9 @@ public class PhotoAttributesAdapter extends UserAttributesAdapter {
      */
     @Override
     public void bindView(View view, Context context, Cursor cursor) {
-        ViewHolder holder = (ViewHolder) view.getTag();
+        PhotoAttViewHolder holder = (PhotoAttViewHolder) view.getTag();
         PhotoAttribute photo = getItem(cursor.getPosition());
-        holder.setData(photo, context, mShowStatusImage);
+        holder.setData(photo, context);
     }
 
     public void startViewIntent(final int position) {
@@ -211,51 +211,5 @@ public class PhotoAttributesAdapter extends UserAttributesAdapter {
 
     public boolean isPhotoListEmpty() {
         return getCursor().getCount() == 0;
-    }
-
-    public static class ViewHolder {
-        final public ImageView vPhoto;
-        final public TextView vDescription;
-        final public ImageView vIsVerified;
-
-        public ViewHolder(View view) {
-            vPhoto = (ImageView) view.findViewById(R.id.photo_attribute_image);
-            vDescription = (TextView) view.findViewById(R.id.photo_attribute_description);
-            vIsVerified = (ImageView) view.findViewById(R.id.photo_att_item_certified);
-        }
-
-        public void setData(PhotoAttribute att, Context context, boolean showStatusImage) {
-            vPhoto.setImageBitmap(att.getBitmap());
-            vDescription.setText(att.getDescription());
-            setVerifiedIcon(att, context);
-            if (!showStatusImage) {
-                vIsVerified.setVisibility(View.GONE);
-            }
-        }
-
-        private void setVerifiedIcon(PhotoAttribute att, Context context) {
-            switch (att.getStatus()) {
-                case PhotoAttribute.STATUS_REVOKED: {
-                    KeyFormattingUtils.setStatusImage(context, vIsVerified, null,
-                            KeyFormattingUtils.State.REVOKED, R.color.key_flag_gray);
-                    break;
-                }
-                case PhotoAttribute.STATUS_VERIFIED: {
-                    KeyFormattingUtils.setStatusImage(context, vIsVerified, null,
-                            KeyFormattingUtils.State.VERIFIED, KeyFormattingUtils.DEFAULT_COLOR);
-                    break;
-                }
-                case PhotoAttribute.STATUS_UNVERIFIED: {
-                    KeyFormattingUtils.setStatusImage(context, vIsVerified, null,
-                            KeyFormattingUtils.State.UNVERIFIED, KeyFormattingUtils.DEFAULT_COLOR);
-                    break;
-                }
-                case PhotoAttribute.STATUS_INVALID: {
-                    KeyFormattingUtils.setStatusImage(context, vIsVerified, null,
-                            KeyFormattingUtils.State.INVALID, KeyFormattingUtils.DEFAULT_COLOR);
-                    break;
-                }
-            }
-        }
     }
 }

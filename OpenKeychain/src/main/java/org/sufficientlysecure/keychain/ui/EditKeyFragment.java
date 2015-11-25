@@ -25,6 +25,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Messenger;
+import android.provider.MediaStore;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
@@ -38,6 +39,7 @@ import android.widget.ListView;
 import org.sufficientlysecure.keychain.Constants;
 import org.sufficientlysecure.keychain.R;
 import org.sufficientlysecure.keychain.compatibility.DialogFragmentWorkaround;
+import org.sufficientlysecure.keychain.linked.PhotoAttribute;
 import org.sufficientlysecure.keychain.operations.results.OperationResult;
 import org.sufficientlysecure.keychain.operations.results.OperationResult.LogType;
 import org.sufficientlysecure.keychain.operations.results.SingletonResult;
@@ -53,6 +55,8 @@ import org.sufficientlysecure.keychain.service.SaveKeyringParcel;
 import org.sufficientlysecure.keychain.service.SaveKeyringParcel.ChangeUnlockParcel;
 import org.sufficientlysecure.keychain.service.SaveKeyringParcel.SubkeyChange;
 import org.sufficientlysecure.keychain.service.input.CryptoInputParcel;
+import org.sufficientlysecure.keychain.ui.adapter.PhotoAttributesAdapter;
+import org.sufficientlysecure.keychain.ui.adapter.PhotoAttsAddedAdapter;
 import org.sufficientlysecure.keychain.ui.adapter.SubkeysAdapter;
 import org.sufficientlysecure.keychain.ui.adapter.SubkeysAddedAdapter;
 import org.sufficientlysecure.keychain.ui.adapter.UserIdsAdapter;
@@ -68,6 +72,9 @@ import org.sufficientlysecure.keychain.ui.util.Notify;
 import org.sufficientlysecure.keychain.util.Log;
 import org.sufficientlysecure.keychain.util.Passphrase;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Date;
 
 public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyringParcel, OperationResult>
@@ -76,23 +83,31 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
     public static final String ARG_DATA_URI = "uri";
     public static final String ARG_SAVE_KEYRING_PARCEL = "save_keyring_parcel";
 
+    public static final int PICK_PHOTO = 0;
+
     private ListView mUserIdsList;
+    private ListView mPhotoAttsList;
     private ListView mSubkeysList;
     private ListView mUserIdsAddedList;
+    private ListView mPhotoAttsAddedList;
     private ListView mSubkeysAddedList;
     private View mChangePassphrase;
     private View mAddUserId;
+    private View mAddPhoto;
     private View mAddSubkey;
 
     private static final int LOADER_ID_USER_IDS = 0;
     private static final int LOADER_ID_SUBKEYS = 1;
+    private static final int LOADER_ID_PHOTO_ATTRIBUTES = 2;
 
     // cursor adapter
     private UserIdsAdapter mUserIdsAdapter;
+    private PhotoAttributesAdapter mPhotoAttributesAdapter;
     private SubkeysAdapter mSubkeysAdapter;
 
     // array adapter
     private UserIdsAddedAdapter mUserIdsAddedAdapter;
+    private PhotoAttsAddedAdapter mPhotoAttsAddedAdapter;
     private SubkeysAddedAdapter mSubkeysAddedAdapter;
 
     private Uri mDataUri;
@@ -131,11 +146,14 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
         View view = inflater.inflate(R.layout.edit_key_fragment, null);
 
         mUserIdsList = (ListView) view.findViewById(R.id.edit_key_user_ids);
+        mPhotoAttsList = (ListView) view.findViewById(R.id.edit_key_photo_atts);
         mSubkeysList = (ListView) view.findViewById(R.id.edit_key_keys);
         mUserIdsAddedList = (ListView) view.findViewById(R.id.edit_key_user_ids_added);
+        mPhotoAttsAddedList = (ListView) view.findViewById(R.id.edit_key_photo_atts_added);
         mSubkeysAddedList = (ListView) view.findViewById(R.id.edit_key_subkeys_added);
         mChangePassphrase = view.findViewById(R.id.edit_key_action_change_passphrase);
         mAddUserId = view.findViewById(R.id.edit_key_action_add_user_id);
+        mAddPhoto = view.findViewById(R.id.edit_key_action_add_photo);
         mAddSubkey = view.findViewById(R.id.edit_key_action_add_key);
 
         return view;
@@ -150,15 +168,19 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
                     @Override
                     public void onClick(View v) {
                         // if we are working on an Uri, save directly
+                        Log.d("ADDPHOTO", "onActivityCreated(), első click listener");
                         if (mDataUri == null) {
+                            Log.d("ADDPHOTO", "uri == null ág");
                             returnKeyringParcel();
                         } else {
+                            Log.d("ADDPHOTO", "uri != null, crypto operation ág");
                             cryptoOperation(new CryptoInputParcel(new Date()));
                         }
                     }
                 }, new OnClickListener() {
                     @Override
                     public void onClick(View v) {
+                        Log.d("ADDPHOTO", "onActivityCreated(), második click listener");
                         getActivity().setResult(Activity.RESULT_CANCELED);
                         getActivity().finish();
                     }
@@ -186,6 +208,9 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
 
         mUserIdsAddedAdapter = new UserIdsAddedAdapter(getActivity(), mSaveKeyringParcel.mAddUserIds, true);
         mUserIdsAddedList.setAdapter(mUserIdsAddedAdapter);
+
+        mPhotoAttsAddedAdapter = new PhotoAttsAddedAdapter(getActivity(), mSaveKeyringParcel.mAddPhotos);
+        mPhotoAttsAddedList.setAdapter(mPhotoAttsAddedAdapter);
 
         mSubkeysAddedAdapter = new SubkeysAddedAdapter(getActivity(), mSaveKeyringParcel.mAddSubKeys, true);
         mSubkeysAddedList.setAdapter(mSubkeysAddedAdapter);
@@ -221,6 +246,7 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
         // Prepare the loaders. Either re-connect with an existing ones,
         // or start new ones.
         getLoaderManager().initLoader(LOADER_ID_USER_IDS, null, EditKeyFragment.this);
+        getLoaderManager().initLoader(LOADER_ID_PHOTO_ATTRIBUTES, null, EditKeyFragment.this);
         getLoaderManager().initLoader(LOADER_ID_SUBKEYS, null, EditKeyFragment.this);
 
         mUserIdsAdapter = new UserIdsAdapter(getActivity(), null, 0, mSaveKeyringParcel);
@@ -230,6 +256,14 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
         mUserIdsAddedAdapter = new UserIdsAddedAdapter(getActivity(), mSaveKeyringParcel.mAddUserIds, false);
         mUserIdsAddedList.setAdapter(mUserIdsAddedAdapter);
 
+        mPhotoAttributesAdapter = new PhotoAttributesAdapter(getActivity(), null, 0, false, true);
+        mPhotoAttsList.setAdapter(mPhotoAttributesAdapter);
+
+        mPhotoAttsAddedAdapter = new PhotoAttsAddedAdapter(getActivity(), mSaveKeyringParcel.mAddPhotos);
+        mPhotoAttsAddedList.setAdapter(mPhotoAttsAddedAdapter);
+        // TODO: a sima adapternek nem kéne parcel-es konstruktor, ugyanúgy, mint a másik kettőnek?...
+        // TODO: az added adapterbe nem kéne szintén egy newKeyring boolean pm.?
+
         mSubkeysAdapter = new SubkeysAdapter(getActivity(), null, 0, mSaveKeyringParcel);
         mSubkeysList.setAdapter(mSubkeysAdapter);
 
@@ -238,17 +272,24 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
     }
 
     private void initView() {
-        mChangePassphrase.setOnClickListener(new View.OnClickListener() {
+        mChangePassphrase.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
                 changePassphrase();
             }
         });
 
-        mAddUserId.setOnClickListener(new View.OnClickListener() {
+        mAddUserId.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
                 addUserId();
+            }
+        });
+
+        mAddPhoto.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                addPhoto();
             }
         });
 
@@ -259,17 +300,24 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
             }
         });
 
-        mSubkeysList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                editSubkey(position);
-            }
-        });
-
         mUserIdsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 editUserId(position);
+            }
+        });
+
+        mPhotoAttsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                editPhoto(position);
+            }
+        });
+
+        mSubkeysList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                editSubkey(position);
             }
         });
     }
@@ -281,6 +329,10 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
                 Uri baseUri = UserPackets.buildUserIdsUri(mDataUri);
                 return new CursorLoader(getActivity(), baseUri,
                         UserIdsAdapter.USER_PACKETS_PROJECTION, null, null, null);
+            }
+
+            case LOADER_ID_PHOTO_ATTRIBUTES: {
+                return PhotoAttributesAdapter.createLoader(getActivity(), mDataUri);
             }
 
             case LOADER_ID_SUBKEYS: {
@@ -302,6 +354,10 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
                 mUserIdsAdapter.swapCursor(data);
                 break;
 
+            case LOADER_ID_PHOTO_ATTRIBUTES:
+                mPhotoAttributesAdapter.swapCursor(data);
+                break;
+
             case LOADER_ID_SUBKEYS:
                 mSubkeysAdapter.swapCursor(data);
                 break;
@@ -317,6 +373,9 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
         switch (loader.getId()) {
             case LOADER_ID_USER_IDS:
                 mUserIdsAdapter.swapCursor(null);
+                break;
+            case LOADER_ID_PHOTO_ATTRIBUTES:
+                mPhotoAttributesAdapter.swapCursor(null);
                 break;
             case LOADER_ID_SUBKEYS:
                 mSubkeysAdapter.swapCursor(null);
@@ -399,6 +458,10 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
                 dialogFragment.show(getActivity().getSupportFragmentManager(), "editUserIdDialog");
             }
         });
+    }
+
+    private void editPhoto(final int position) {
+        Log.d("ADDPHOTO", "Edit photo called for position " + position + "!!!!");
     }
 
     private void editSubkey(final int position) {
@@ -559,6 +622,41 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
         addUserIdDialog.show(getActivity().getSupportFragmentManager(), "addUserIdDialog");
     }
 
+    private void addPhoto() {
+        Intent getIntent = new Intent(Intent.ACTION_GET_CONTENT);
+        getIntent.setType("image/*");
+
+        Intent pickIntent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        pickIntent.setType("image/*");
+
+        Intent chooserIntent = Intent.createChooser(getIntent, "Select Photo ");
+        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{pickIntent});
+
+        startActivityForResult(chooserIntent, PICK_PHOTO);
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent intent) {
+        super.onActivityResult(requestCode, resultCode, intent);
+        Log.d("ADDPHOTO", "új 3!!!!!");
+        if (requestCode == PICK_PHOTO && resultCode == Activity.RESULT_OK) {
+            try {
+                InputStream inputStream = getActivity().getContentResolver().openInputStream(intent.getData());
+                PhotoAttribute photoAttribute = new PhotoAttribute(inputStream, PhotoAttribute.STATUS_VERIFIED, getActivity());
+                mPhotoAttsAddedAdapter.add(photoAttribute);
+            } catch (NullPointerException e) {
+                // TODO: lekezelni a hibákat!!
+                Log.e("ADDPHOTO", "null intent");
+            } catch (FileNotFoundException e) {
+                Log.e("ADDPHOTO", "file not found exception");
+            } catch (IOException e) {
+                Log.e("ADDPHOTO", "IO exception");
+            }
+        }
+        // TODO: mégse esetén kiírni, h megszakítva a művelet??
+        // TODO: csak 200x200, 20 kb-os képnél kisebbet engedjünk fel!
+    }
+
     private void addSubkey() {
         boolean willBeMasterKey;
         if (mSubkeysAdapter != null) {
@@ -582,6 +680,7 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
     }
 
     protected void returnKeyringParcel() {
+        Log.d("ADDPHOTO", "returnKeyringParcel() eleje");
         if (mSaveKeyringParcel.mAddUserIds.size() == 0) {
             Notify.create(getActivity(), R.string.edit_key_error_add_identity, Notify.Style.ERROR).show();
             return;
@@ -594,6 +693,7 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
         // use first user id as primary
         mSaveKeyringParcel.mChangePrimaryUserId = mSaveKeyringParcel.mAddUserIds.get(0);
 
+        Log.d("ADDPHOTO", "return keyring parcel, visszatérés előtt");
         Intent returnIntent = new Intent();
         returnIntent.putExtra(EditKeyActivity.EXTRA_SAVE_KEYRING_PARCEL, mSaveKeyringParcel);
         getActivity().setResult(Activity.RESULT_OK, returnIntent);
@@ -605,6 +705,7 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
      */
     void finishWithError(LogType reason) {
         // Prepare an intent with an EXTRA_RESULT
+        Log.d("ADDPHOTO", "finish with error");
         Intent intent = new Intent();
         intent.putExtra(OperationResult.EXTRA_RESULT,
                 new SingletonResult(SingletonResult.RESULT_ERROR, reason));
@@ -621,6 +722,8 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
 
     @Override
     public void onQueuedOperationSuccess(OperationResult result) {
+
+        Log.d("ADDPHOTO", "on queued operation success()");
 
         // null-protected from Queueing*Fragment
         Activity activity = getActivity();
