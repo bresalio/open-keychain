@@ -381,8 +381,6 @@ public class PgpKeyOperation {
          * 6. If requested, change passphrase
          */
 
-        Log.d("ADDPHOTO", "modify method, at the beginning");
-
         log.add(LogType.MSG_MF, indent,
                 KeyFormattingUtils.convertKeyIdToHex(wsKR.getMasterKeyId()));
         indent += 1;
@@ -391,7 +389,6 @@ public class PgpKeyOperation {
         // Make sure this is called with a proper SaveKeyringParcel
         if (saveParcel.mMasterKeyId == null || saveParcel.mMasterKeyId != wsKR.getMasterKeyId()) {
             log.add(LogType.MSG_MF_ERROR_KEYID, indent);
-            Log.d("ADDPHOTO", "key id error");
             return new PgpEditKeyResult(PgpEditKeyResult.RESULT_ERROR, log, null);
         }
 
@@ -403,13 +400,11 @@ public class PgpKeyOperation {
         if (saveParcel.mFingerprint == null || !Arrays.equals(saveParcel.mFingerprint,
                                     masterSecretKey.getPublicKey().getFingerprint())) {
             log.add(LogType.MSG_MF_ERROR_FINGERPRINT, indent);
-            Log.d("ADDPHOTO", "fingerprint error");
             return new PgpEditKeyResult(PgpEditKeyResult.RESULT_ERROR, log, null);
         }
 
         if (saveParcel.isEmpty()) {
             log.add(LogType.MSG_MF_ERROR_NOOP, indent);
-            Log.d("ADDPHOTO", "empty error");
             return new PgpEditKeyResult(PgpEditKeyResult.RESULT_ERROR, log, null);
         }
 
@@ -467,14 +462,12 @@ public class PgpKeyOperation {
 
         if (isDummy(masterSecretKey) || saveParcel.isRestrictedOnly()) {
             log.add(LogType.MSG_MF_RESTRICTED_MODE, indent);
-            Log.d("ADDPHOTO", "restricted mode");
             return internalRestricted(sKR, saveParcel, log, indent + 1);
         }
 
         // Do we require a passphrase? If so, pass it along
         if (!isDivertToCard(masterSecretKey) && !cryptoInput.hasPassphrase()) {
             log.add(LogType.MSG_MF_REQUIRE_PASSPHRASE, indent);
-            Log.d("ADDPHOTO", "require passphrase");
             return new PgpEditKeyResult(log, RequiredInputParcel.createRequiredSignPassphrase(
                     masterSecretKey.getKeyID(), masterSecretKey.getKeyID(),
                     cryptoInput.getSignatureTime()), cryptoInput);
@@ -487,8 +480,6 @@ public class PgpKeyOperation {
         Date expiryTime = wsKR.getPublicKey().getExpiryTime();
         long masterKeyExpiry = expiryTime != null ? expiryTime.getTime() / 1000 : 0L;
 
-        Log.d("ADDPHOTO", "before calling internal");
-
         return internal(sKR, masterSecretKey, masterKeyFlags, masterKeyExpiry, cryptoInput, saveParcel, log, indent);
 
     }
@@ -499,8 +490,6 @@ public class PgpKeyOperation {
                                      SaveKeyringParcel saveParcel,
                                      OperationLog log,
                                      int indent) {
-
-        Log.d("ADDPHOTO", "internal");
 
         NfcSignOperationsBuilder nfcSignOps = new NfcSignOperationsBuilder(
                 cryptoInput.getSignatureTime(), masterSecretKey.getKeyID(),
@@ -517,11 +506,9 @@ public class PgpKeyOperation {
         if (isDivertToCard(masterSecretKey)) {
             masterPrivateKey = null;
             log.add(LogType.MSG_MF_DIVERT, indent);
-            Log.d("ADDPHOTO", "divert akármi");
         } else {
 
             // 1. Unlock private key
-            Log.d("ADDPHOTO", "unlock private key");
             progress(R.string.progress_modify_unlock, 10);
             log.add(LogType.MSG_MF_UNLOCK, indent);
             {
@@ -538,7 +525,6 @@ public class PgpKeyOperation {
 
         try {
 
-            Log.d("ADDPHOTO", "try block kezdete");
             // Check if we were cancelled
             if (checkCancelled()) {
                 log.add(LogType.MSG_OPERATION_CANCELLED, indent);
@@ -604,7 +590,6 @@ public class PgpKeyOperation {
                 // 2b. Add certificates for new user attributes
                 subProgressPush(23, 32);
                 saveParcel.convertPhotosToWrappedUserAttributes();
-                Log.d("ADDPHOTO", "converted");
                 for (int i = 0; i < saveParcel.mAddUserAttributes.size(); i++) {
 
                     progress(R.string.progress_modify_adduat, (i - 1) * (100 / saveParcel.mAddUserAttributes.size()));

@@ -66,7 +66,13 @@ public class WrappedUserAttribute implements Serializable {
     }
 
     public static WrappedUserAttribute fromSubpacket(int type, byte[] data) {
-        UserAttributeSubpacket subpacket = new UserAttributeSubpacket(type, data);
+        UserAttributeSubpacket subpacket;
+        if (type == UAT_IMAGE) {
+            subpacket = new ImageAttribute(ImageAttribute.JPEG, data);
+        } else {
+            subpacket = new UserAttributeSubpacket(type, data);
+        }
+
         PGPUserAttributeSubpacketVector vector = new PGPUserAttributeSubpacketVector(
                 new UserAttributeSubpacket[]{subpacket});
 
@@ -88,7 +94,13 @@ public class WrappedUserAttribute implements Serializable {
                 new UserAttributeSubpacketInputStream(new ByteArrayInputStream(data));
         ArrayList<UserAttributeSubpacket> list = new ArrayList<>();
         while (in.available() > 0) {
-            list.add(in.readPacket());
+            UserAttributeSubpacket next;
+            try {
+                next = in.readPacket();
+            } catch (NegativeArraySizeException e) {
+                next = new UserAttributeSubpacket(UserAttributeSubpacketTags.IMAGE_ATTRIBUTE, null);
+            }
+            list.add(next);
         }
         UserAttributeSubpacket[] result = new UserAttributeSubpacket[list.size()];
         list.toArray(result);
@@ -139,7 +151,11 @@ public class WrappedUserAttribute implements Serializable {
 
         for (UserAttributeSubpacket subpacket : mVector.toSubpacketArray()) {
             if (subpacket.getType() == UserAttributeSubpacketTags.IMAGE_ATTRIBUTE) {
-                imageAttributeData.add(((ImageAttribute) subpacket).getImageData());
+                if (subpacket.getData() != null) {
+                    imageAttributeData.add(((ImageAttribute) subpacket).getImageData());
+                } else {
+                    imageAttributeData.add(null);
+                }
             }
         }
 

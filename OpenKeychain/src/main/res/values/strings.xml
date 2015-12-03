@@ -321,7 +321,20 @@
     <string name="also_export_secret_keys">"Also export secret keys"</string>
     <string name="reinstall_openkeychain">"You encountered a known bug with Android. Please reinstall OpenKeychain if you want to link your contacts with keys."</string>
     <string name="no_photos">"No photo attributes are attached to this key."</string>
-    <string name="photo_att_description">"Photo attribute"</string>
+    <string name="photo_att_description">"Image of subpacket size"</string>
+    <string name="photo_status_invalid">"Wrong photo attribute"</string>
+    <string name="photo_view_intent_null">"Something is wrong with this photo!"</string>
+    <string name="add_photo_actual_size">"This photo is of size (bytes, pixels):"</string>
+    <string name="add_photo_max_size">"The maximum supported size is:"</string>
+    <string name="add_photo_must_be_scaled">"If you want to use it, it must be scaled."</string>
+    <string name="add_photo_scale_now">"Scale now?"</string>
+    <string name="add_photo_scale_dialog_title">"Too large photo"</string>
+    <string name="add_photo_too_big_aborted">"Addition of too large photo has been aborted!"</string>
+    <string name="add_photo_scale_ok">"Scale"</string>
+    <string name="add_photo_scale_cancel">"Cancel"</string>
+    <string name="add_photo_null_intent">"Error receiving image data!"</string>
+    <string name="add_photo_io_error">"Error processing image data!"</string>
+    <string name="add_photo_canceled">"Addition of photo has been canceled!"</string>
 
     <string name="key_exported">"Successfully exported 1 key."</string>
     <string name="keys_exported">"Successfully exported %d keys."</string>

@@ -1,6 +1,8 @@
 package org.sufficientlysecure.keychain.ui;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
@@ -9,7 +11,6 @@ import android.widget.TextView;
 import org.sufficientlysecure.keychain.R;
 import org.sufficientlysecure.keychain.linked.PhotoAttribute;
 import org.sufficientlysecure.keychain.ui.util.KeyFormattingUtils;
-import org.sufficientlysecure.keychain.util.Log;
 
 public class PhotoAttViewHolder {
     final public ImageView vPhoto;
@@ -26,6 +27,8 @@ public class PhotoAttViewHolder {
     // should be null if the view holder is not being used from added photos adapter
     public ArrayAdapter<PhotoAttribute> mAdapter;
     public PhotoAttribute mModel;
+
+    private static final int DEFAULT_BACKGROUND_COLOR = Color.BLACK;
 
     public PhotoAttViewHolder(View view, ArrayAdapter<PhotoAttribute> adapter,
                               boolean showStatusImage, boolean showEditImage, boolean showDeleteButton) {
@@ -44,10 +47,16 @@ public class PhotoAttViewHolder {
 
     public void setData(PhotoAttribute att, Context context) {
         mModel = att;
-        vPhoto.setImageBitmap(att.getBitmap());
+
+        Bitmap bitmap = att.getBitmap();
+        if(bitmap != null) {
+            vPhoto.setImageBitmap(bitmap);
+        } else {
+            vPhoto.setBackgroundColor(DEFAULT_BACKGROUND_COLOR);
+        }
+
         vDescription.setText(att.getDescription());
-        if (att.isRevokedOrInvalid()) {
-            Log.d("ADDPHOTO", "view holder, disable text: " + att.getDescription());
+        if (att.isRevoked()) {
             vDescription.setEnabled(false);
         }
 
@@ -56,9 +65,11 @@ public class PhotoAttViewHolder {
         } else {
             setVerifiedIcon(context);
         }
+
         if (!mShowEditImage) {
             vEditImage.setVisibility(View.GONE);
         }
+
         if (!mShowDeleteButton) {
             vDeleteButton.setVisibility(View.GONE);
         } else if (mAdapter != null) {

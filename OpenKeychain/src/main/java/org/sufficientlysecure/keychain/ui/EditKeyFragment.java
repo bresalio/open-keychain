@@ -18,6 +18,7 @@
 package org.sufficientlysecure.keychain.ui;
 
 import android.app.Activity;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -29,12 +30,14 @@ import android.provider.MediaStore;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
+import android.support.v7.app.AlertDialog;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import org.sufficientlysecure.keychain.Constants;
 import org.sufficientlysecure.keychain.R;
@@ -72,7 +75,6 @@ import org.sufficientlysecure.keychain.ui.util.Notify;
 import org.sufficientlysecure.keychain.util.Log;
 import org.sufficientlysecure.keychain.util.Passphrase;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Date;
@@ -168,19 +170,20 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
                     @Override
                     public void onClick(View v) {
                         // if we are working on an Uri, save directly
-                        Log.d("ADDPHOTO", "onActivityCreated(), első click listener");
                         if (mDataUri == null) {
-                            Log.d("ADDPHOTO", "uri == null ág");
                             returnKeyringParcel();
                         } else {
-                            Log.d("ADDPHOTO", "uri != null, crypto operation ág");
-                            cryptoOperation(new CryptoInputParcel(new Date()));
+                            // TODO: kivenni a try-catch-t!
+                            try {
+                                cryptoOperation(new CryptoInputParcel(new Date()));
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
                         }
                     }
                 }, new OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        Log.d("ADDPHOTO", "onActivityCreated(), második click listener");
                         getActivity().setResult(Activity.RESULT_CANCELED);
                         getActivity().finish();
                     }
@@ -629,7 +632,7 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
         Intent pickIntent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         pickIntent.setType("image/*");
 
-        Intent chooserIntent = Intent.createChooser(getIntent, "Select Photo ");
+        Intent chooserIntent = Intent.createChooser(getIntent, "Choose an Image Viewer");
         chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{pickIntent});
 
         startActivityForResult(chooserIntent, PICK_PHOTO);
@@ -638,23 +641,45 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
         super.onActivityResult(requestCode, resultCode, intent);
-        Log.d("ADDPHOTO", "új 3!!!!!");
-        if (requestCode == PICK_PHOTO && resultCode == Activity.RESULT_OK) {
-            try {
-                InputStream inputStream = getActivity().getContentResolver().openInputStream(intent.getData());
-                PhotoAttribute photoAttribute = new PhotoAttribute(inputStream, PhotoAttribute.STATUS_VERIFIED, getActivity());
-                mPhotoAttsAddedAdapter.add(photoAttribute);
-            } catch (NullPointerException e) {
-                // TODO: lekezelni a hibákat!!
-                Log.e("ADDPHOTO", "null intent");
-            } catch (FileNotFoundException e) {
-                Log.e("ADDPHOTO", "file not found exception");
-            } catch (IOException e) {
-                Log.e("ADDPHOTO", "IO exception");
+        if (requestCode == PICK_PHOTO) {
+            if (resultCode == Activity.RESULT_OK) {
+                try {
+                    InputStream inputStream
+                            = getActivity().getContentResolver().openInputStream(intent.getData());
+                    final PhotoAttribute photoAttribute
+                            = new PhotoAttribute(inputStream, PhotoAttribute.STATUS_VERIFIED, getActivity());
+                    if (photoAttribute.ofSuitableSize()) {
+                        mPhotoAttsAddedAdapter.add(photoAttribute);
+                    } else {
+                        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                        builder.setTitle(R.string.add_photo_scale_dialog_title);
+                        builder.setMessage(photoAttribute.scalingMessage());
+                        builder.setPositiveButton(R.string.add_photo_scale_ok,
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        photoAttribute.scale();
+                                        mPhotoAttsAddedAdapter.add(photoAttribute);
+                                    }
+                                });
+                        builder.setNegativeButton(R.string.add_photo_scale_cancel,
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        Toast.makeText(getActivity(),
+                                                R.string.add_photo_too_big_aborted, Toast.LENGTH_LONG).show();
+                                    }
+                                });
+                        AlertDialog dialog = builder.create();
+                        dialog.show();
+                    }
+                } catch (NullPointerException e) {
+                    Toast.makeText(getActivity(), R.string.add_photo_null_intent, Toast.LENGTH_LONG).show();
+                } catch (IOException e) {
+                    Toast.makeText(getActivity(), R.string.add_photo_io_error, Toast.LENGTH_LONG).show();
+                }
+            } else if (resultCode == Activity.RESULT_CANCELED) {
+                Toast.makeText(getActivity(), R.string.add_photo_canceled, Toast.LENGTH_LONG).show();
             }
         }
-        // TODO: mégse esetén kiírni, h megszakítva a művelet??
-        // TODO: csak 200x200, 20 kb-os képnél kisebbet engedjünk fel!
     }
 
     private void addSubkey() {
@@ -680,7 +705,6 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
     }
 
     protected void returnKeyringParcel() {
-        Log.d("ADDPHOTO", "returnKeyringParcel() eleje");
         if (mSaveKeyringParcel.mAddUserIds.size() == 0) {
             Notify.create(getActivity(), R.string.edit_key_error_add_identity, Notify.Style.ERROR).show();
             return;
@@ -693,7 +717,6 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
         // use first user id as primary
         mSaveKeyringParcel.mChangePrimaryUserId = mSaveKeyringParcel.mAddUserIds.get(0);
 
-        Log.d("ADDPHOTO", "return keyring parcel, visszatérés előtt");
         Intent returnIntent = new Intent();
         returnIntent.putExtra(EditKeyActivity.EXTRA_SAVE_KEYRING_PARCEL, mSaveKeyringParcel);
         getActivity().setResult(Activity.RESULT_OK, returnIntent);
@@ -705,7 +728,6 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
      */
     void finishWithError(LogType reason) {
         // Prepare an intent with an EXTRA_RESULT
-        Log.d("ADDPHOTO", "finish with error");
         Intent intent = new Intent();
         intent.putExtra(OperationResult.EXTRA_RESULT,
                 new SingletonResult(SingletonResult.RESULT_ERROR, reason));
@@ -722,8 +744,6 @@ public class EditKeyFragment extends QueueingCryptoOperationFragment<SaveKeyring
 
     @Override
     public void onQueuedOperationSuccess(OperationResult result) {
-
-        Log.d("ADDPHOTO", "on queued operation success()");
 
         // null-protected from Queueing*Fragment
         Activity activity = getActivity();

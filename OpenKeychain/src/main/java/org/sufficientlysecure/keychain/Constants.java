@@ -26,6 +26,9 @@ import java.net.Proxy;
 
 public final class Constants {
 
+    // Nem mindegyik konstansról tudom a neve alapján, h milyen jelentést takarnak, de ez nem baj.
+    // A Pref osztály tagjai miért sztringek, amikor a (vélt) jelentése alapján egy csomó boolean-nak felelne meg??
+
     public static final boolean DEBUG = BuildConfig.DEBUG;
     public static final boolean DEBUG_LOG_DB_QUERIES = false;
     public static final boolean DEBUG_SYNC_REMOVE_CONTACTS = false;

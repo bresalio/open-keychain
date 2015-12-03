@@ -27,6 +27,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import org.sufficientlysecure.keychain.Constants;
 import org.sufficientlysecure.keychain.R;
@@ -206,7 +207,13 @@ public class PhotoAttributesAdapter extends UserAttributesAdapter {
     public void startViewIntent(final int position) {
         Log.i(Constants.TAG, "PhotoAttributesAdapter.getViewIntent() called for position " + position);
         Intent viewIntent = getItem(position).getViewIntent();
-        mContext.startActivity(viewIntent);
+        if (viewIntent != null) {
+            Log.i(Constants.TAG, "View intent started");
+            mContext.startActivity(viewIntent);
+        } else {
+            Log.i(Constants.TAG, "View intent is null, could not start it!");
+            Toast.makeText(mContext, R.string.photo_view_intent_null, Toast.LENGTH_LONG).show();
+        }
     }
 
     public boolean isPhotoListEmpty() {

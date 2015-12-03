@@ -49,12 +49,22 @@ import java.util.WeakHashMap;
 
 public class LinkedIdsAdapter extends UserAttributesAdapter {
     private final boolean mIsSecret;
+    // Az isSecret értéke egyszerűen konstruktorból állítódik be.
+
     protected LayoutInflater mInflater;
+    // Inflater: technikai célokat szolgál, nincs vele semmi különös.
+
     WeakHashMap<Integer,UriAttribute> mLinkedIdentityCache = new WeakHashMap<>();
+    // WeakHashMap: úgy működik, mint egy cache: a nem elég gyakran használt
+    // bejegyzések idővel törlődnek belőle (kitörli őket a GC).
+    // Itt az Integer a rank, az UriAttribute pedig a hozzá tartozó linked id.
 
     private Cursor mUnfilteredCursor;
+    // Unfiltered: nincs belőle semmi se kiszűrve.
+    // Filtered (lásd swapCursor()): nem látszanak benne a nem LinkedAttribute elemek.
 
     private TextView mExpander;
+    // Ez nem használt, nem kell vele foglalkozni!!
 
     public LinkedIdsAdapter(Context context, Cursor c, int flags,
             boolean isSecret, TextView expander) {
@@ -62,6 +72,9 @@ public class LinkedIdsAdapter extends UserAttributesAdapter {
         mInflater = LayoutInflater.from(context);
         mIsSecret = isSecret;
 
+        // Vegyük észre, h ha az expander nem null, a visibility-je akkor is gone:
+        // vagyis nem használjuk!!
+        // (A szerepe az lett volna, h rákattintva a filtered elemeket is megmutatja.)
         if (expander != null) {
             expander.setVisibility(View.GONE);
             /* don't show an expander (maybe in some sort of advanced view?)
@@ -76,12 +89,21 @@ public class LinkedIdsAdapter extends UserAttributesAdapter {
         }
     }
 
+    // Swap in a new Cursor, returning the old Cursor.
+    // Unlike changeCursor(Cursor), the returned old Cursor is not closed.
     @Override
     public Cursor swapCursor(Cursor cursor) {
         if (cursor == null) {
             mUnfilteredCursor = null;
             return super.swapCursor(null);
         }
+        // Az unfiltered cursor mindig a pm.-ként kapott cursor értékét kapja meg,
+        // és a return statement is mindig a super.swapCursor(cursor).
+
+        // A filtered cursor annyiban más vagy több, h az isVisible() metódusa
+        // (amit a FilterCursorWrappertől örököl) lekéri az adott pozícióban levő
+        // uri attribute-ot, és akkor tér vissza igazzal, ha az LinkedAttribute típusú.
+
         mUnfilteredCursor = cursor;
         FilterCursorWrapper filteredCursor = new FilterCursorWrapper(cursor) {
             @Override
@@ -110,11 +132,15 @@ public class LinkedIdsAdapter extends UserAttributesAdapter {
         super.swapCursor(mUnfilteredCursor);
     }
 
+    // Bind an existing view to the data pointed to by cursor.
+    // view 	Existing view, returned earlier by newView.
+    // cursor 	The cursor from which to get the data, already moved to the correct position.
     @Override
     public void bindView(View view, Context context, Cursor cursor) {
 
         ViewHolder holder = (ViewHolder) view.getTag();
 
+        // Ez a képekhez valszeg nem fog kelleni!
         if (!mIsSecret) {
             int isVerified = cursor.getInt(INDEX_VERIFIED);
             switch (isVerified) {
@@ -133,9 +159,11 @@ public class LinkedIdsAdapter extends UserAttributesAdapter {
             }
         }
 
+        // Ez fontos!
         UriAttribute id = getItemAtPosition(cursor);
         holder.setData(mContext, id);
 
+        // Ez mi???
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             view.setTransitionName(id.mUri.toString());
         }
@@ -145,6 +173,10 @@ public class LinkedIdsAdapter extends UserAttributesAdapter {
     public UriAttribute getItemAtPosition(Cursor cursor) {
         int rank = cursor.getInt(INDEX_RANK);
         Log.d(Constants.TAG, "requested rank: " + rank);
+        // Ezt a részt majd másoljuk ki: a kiválasztás a rank alapján történik!
+        // Ha a linked identity már cache-elve van, csak visszaadja a cache-ből a rank alapján.
+        // Egyébként (lásd lentebb) most cache-eli.
+        // Egyébként a try-blokkban történik a kiolvasás.
 
         UriAttribute ret = mLinkedIdentityCache.get(rank);
         if (ret != null) {
@@ -227,6 +259,7 @@ public class LinkedIdsAdapter extends UserAttributesAdapter {
 
         }
 
+        // Ez a fényképeshez nem kell majd, mert nem kell színezni a szöveget!
         public void seekAttention() {
             ObjectAnimator anim = SubtleAttentionSeeker.tintText(vComment, 1000);
             anim.setStartDelay(200);

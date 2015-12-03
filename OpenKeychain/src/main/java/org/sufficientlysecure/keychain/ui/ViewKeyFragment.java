@@ -418,9 +418,6 @@ public class ViewKeyFragment extends LoaderFragment implements
          */
         // Avoid NullPointerExceptions...
         if (data == null || data.getCount() == 0) {
-            if(loader.getId() == LOADER_ID_PHOTO_ATTRIBUTES) {
-                mPhotoAttributesCard.setVisibility(View.GONE);
-            }
             return;
         }
         // Swap the new cursor in. (The framework will take care of closing the
@@ -469,6 +466,9 @@ public class ViewKeyFragment extends LoaderFragment implements
             case LOADER_ID_PHOTO_ATTRIBUTES: {
                 setContentShown(true, false);
                 mPhotoAttributesAdapter.swapCursor(data);
+                if (mPhotoAttributesAdapter.isPhotoListEmpty()) {
+                    mPhotoAttributesCard.setVisibility(View.GONE);
+                }
                 break;
             }
 
